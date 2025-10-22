@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>계란으로 바위치기</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/png" href="egg.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&family=Noto+Serif+KR:wght@200..900&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #000;
+    color: #eee;
+    overflow: hidden;
+    font-family: "Noto Sans KR", system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 14vh; 
+  }
+
+  .hero img {
+    width: min(95vw, 1200px);
+    height: auto;
+    display: block;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,.6));
+  }
+
+  .typing-wrap {
+    position: absolute;
+    bottom: clamp(80px, 14vh, 180px);
+    width: 100%;
+    text-align: center;
+    font-family: "Noto Serif KR", serif;
+    color: #e8e6df;
+    font-size: clamp(14px, 2.2vmin + 1.6rem, 28px);
+    line-height: 1.6;
+    padding: 0 5vw;
+  }
+
+  .typing { display: inline-block; white-space: pre-wrap; }
+  .caret {
+    display: inline-block; width: .6ch; border-right: 2px solid #e8e6df;
+    animation: blink .9s step-end infinite; vertical-align: bottom; margin-left: 2px;
+  }
+  @keyframes blink { 0%,100%{opacity:0} 50%{opacity:1} }
+
+  .enter-overlay {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #e8f0ff;
+    background: rgba(0,0,0,.62);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .35s ease;
+  }
+  .enter-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .overlay-inner {
+    text-align: center;
+    padding: 24px 28px;
+  }
+  .cta {
+    font-family: "Noto Sans KR", system-ui, sans-serif;
+    letter-spacing: .18em;
+    font-weight: 800;
+    font-size: clamp(18px, 3.2vmin + .6rem, 40px);
+    line-height: 1.15;
+    text-transform: uppercase;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .sub {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #b7c4d8;
+    opacity: .9;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); opacity: .9; }
+    50%     { transform: scale(1.04); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret { animation: none; }
+    .cta { animation: none; }
+    .enter-overlay { transition: none; }
+  }
+
+  button { /* 기존: 모든 버튼 리셋 */
+    all: unset;
+    cursor: pointer;
+  }
+
+  /* ★ 오프닝 건너뛰기 버튼 스타일 */
+  .skip-btn {
+  position: absolute;
+  bottom: clamp(40px, 6.5vh, 120px); /* 텍스트 아래 여백 */
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  z-index: 10;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.3);
+  background: rgba(30,30,30,.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #f2f2f2;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: .02em;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s ease, transform 0.9s ease; 
+}
+
+  .skip-btn:focus-visible {
+    outline: 2px solid #FF24B2;
+    outline-offset: 3px;
+  }
+  .skip-btn.show { /* ★ 나타낼 때 */
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skip-btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage" aria-label="시작 화면">
+    <div class="hero" aria-hidden="true">
+      <img src="h1.png" alt="계란으로 바위치기 타이틀" />
+    </div>
+    <div class="typing-wrap">
+      <span id="typing" class="typing" aria-live="polite" aria-atomic="true"></span><span class="caret" aria-hidden="true"></span>
+    </div>
+  </main>
+
+  <!-- ★ 오프닝 건너뛰기 버튼 -->
+  <button id="skip" class="skip-btn" type="button" aria-label="오프닝 건너뛰기(바로 시작)">오프닝 건너뛰기</button>
+
+  <div class="enter-overlay" id="enter">
+    <div class="overlay-inner" role="button" tabindex="0" aria-label="화면을 클릭하거나 Enter 키로 게임을 시작하세요">
+      <div class="cta">BREAK YOUR STEREOTYPE </div>
+      <div class="sub">화면을 클릭하면 시작합니다</div>
+    </div>
+  </div>
+
+<script>
+  const NEXT_URL = "game.html"; // ← 게임 본화면 파일명으로 변경
+
+  // 타이핑 문장
+  const firstLine  = "어리석은 행동이나, 승산이 없는 무모한 시도를 일컫는 속담.\n";
+  const secondLine = "그런데 정말... 우리의 시도가 무모할까?";
+
+  const el = document.getElementById("typing");
+  const heroImg = document.querySelector(".hero img");
+  const overlay = document.getElementById("enter");
+  const skipBtn = document.getElementById("skip"); // ★
+
+  const speed1 = 80; 
+  const speed2 = 120; 
+
+  // ★ 공통 시작 함수
+  const goNext = () => { window.location.href = NEXT_URL; };
+
+  // ★ 스킵 버튼 표시/동작
+  function showSkipButton() {
+    skipBtn.classList.add("show");
+    skipBtn.addEventListener("click", goNext, { once: true });
+    // 키보드 접근성: 기본 버튼이라 Enter/Space 자동 동작
+  }
+
+  function showOverlay() {
+    overlay.classList.add("show");
+    const start = goNext;
+    overlay.addEventListener("click", start, { once: true });
+    overlay.addEventListener("touchstart", start, { once: true, passive: true });
+    overlay.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.code === "Space") { e.preventDefault(); start(); }
+    }, { once: true });
+    const inner = overlay.querySelector(".overlay-inner");
+    setTimeout(() => inner.focus(), 50);
+  }
+
+  function typeAll() {
+    // ★ 타이핑 시작 후 1초 뒤 스킵 버튼 노출
+    setTimeout(showSkipButton, 1000);
+
+    let i = 0;
+    function typeFirst() {
+      if (i < firstLine.length) {
+        el.textContent += firstLine[i];
+        i++;
+        const ch = firstLine[i - 1];
+        const delay = /[.,?!…]/.test(ch) ? speed1 + 200 : speed1;
+        setTimeout(typeFirst, delay);
+      } else {
+        setTimeout(typeSecond, 700);
+      }
+    }
+
+    function typeSecond() {
+      let j = 0;
+      (function tick(){
+        j++;
+        el.textContent = firstLine + secondLine.slice(0, j);
+        const ch = secondLine[j - 1] || "";
+        const delay = /[.,?!…]/.test(ch) ? speed2 + 220 : speed2;
+        if (j < secondLine.length) {
+          setTimeout(tick, delay);
+        } else {
+          setTimeout(showOverlay, 1000);
+        }
+      })();
+    }
+
+    typeFirst();
+  }
+
+  // 이미지 로딩 후 시작
+  if (heroImg.complete) typeAll();
+  else {
+    heroImg.addEventListener("load",  typeAll);
+    heroImg.addEventListener("error", typeAll);
+  }
+</script>
+</body>
+</html>
